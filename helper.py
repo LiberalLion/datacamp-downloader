@@ -40,10 +40,12 @@ def download_file(con, video_link, location):
                 dl += len(data)
                 f.write(data)
                 done = int(50 * dl / total_length)
-                sys.stdout.write("'{}{}{}' {}[%s%s] %d%% {}\r"
-                                 .format(bcolors.OKBLUE, os.path.basename(location),
-                                         bcolors.ENDC, bcolors.WARNING, bcolors.ENDC) % ('=' * done,
-                                                                                         ' ' * (50 - done), done * 2))
+                sys.stdout.write(
+                    (
+                        f"'{bcolors.OKBLUE}{os.path.basename(location)}{bcolors.ENDC}' {bcolors.WARNING}[%s%s] %d%% {bcolors.ENDC}\r"
+                        % ('=' * done, ' ' * (50 - done), done * 2)
+                    )
+                )
                 #  dl//(time.clock() - start) / 800000))
                 sys.stdout.flush()
     sys.stdout.write('\n')
@@ -51,9 +53,8 @@ def download_file(con, video_link, location):
 
 def save_file(filename, content):
     mkdir(filename)
-    f = open(filename, "w", encoding='utf-8')
-    f.write(content)
-    f.close()
+    with open(filename, "w", encoding='utf-8') as f:
+        f.write(content)
 
 
 def file_exist(file):
@@ -61,9 +62,8 @@ def file_exist(file):
 
 
 def format_filename(name):
-    valid_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
-    filename = ''.join(c for c in name if c in valid_chars)
-    return filename
+    valid_chars = f"-_.() {string.ascii_letters}{string.digits}"
+    return ''.join(c for c in name if c in valid_chars)
 
 
 def mkdir(location):
@@ -75,15 +75,12 @@ def mkdir(location):
 
 
 def fix_link(link):
-    if '?' in link:
-        link += '&embedded=true'
-    else:
-        link += '?embedded=true'
+    link += '&embedded=true' if '?' in link else '?embedded=true'
     return link
 
 
 def handle_error(con):
-    print(bcolors.FAIL + "Error occurred, trying again...")
+    print(f"{bcolors.FAIL}Error occurred, trying again...")
     con.set_new_session()
     time.sleep(5)
 

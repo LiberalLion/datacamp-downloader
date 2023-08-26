@@ -37,7 +37,7 @@ def download_course(url, folder, videos_download, exercise_download, datasets_do
     title = helper.format_filename(title)
 
     if number is not None:
-        title = str(number) + ". " + title
+        title = f"{str(number)}. {title}"
 
     sys.stdout.write(
         f'{bcolors.BKGREEN} {title}  {bcolors.BKENDC}\n')
@@ -56,14 +56,16 @@ def download_course(url, folder, videos_download, exercise_download, datasets_do
 
 
 def get_chapter_exercises(course_id, chapter_id):
-    page = con.session.get('https://campus-api.datacamp.com/api/courses/{}/chapters/{}/progress'
-                           .format(course_id, chapter_id))
+    page = con.session.get(
+        f'https://campus-api.datacamp.com/api/courses/{course_id}/chapters/{chapter_id}/progress'
+    )
     return page.json()
 
 
 def get_course_chapters(course_id):
     page = con.session.get(
-        'https://campus-api.datacamp.com/api/courses/{}/progress'.format(course_id))
+        f'https://campus-api.datacamp.com/api/courses/{course_id}/progress'
+    )
     return page.json()
 
 
@@ -111,13 +113,14 @@ def get_completed_courses():
 
 
 def download_slides(course_id, folder):
-    page = con.session.get('https://www.datacamp.com/courses/{}/continue'
-                           .format(course_id))
+    page = con.session.get(
+        f'https://www.datacamp.com/courses/{course_id}/continue'
+    )
     slide_links = set(re.findall(
         r'(https?://s3.[/|\w|:|.|-]+[^/])&', page.text))
     slide_links = slide_links.union(set(re.findall(
         r'(https?://projector[/|\w|:|.|-]+[^/])&', page.text)))
-    if len(slide_links) == 0:
+    if not slide_links:
         sys.stdout.write(
             f'{bcolors.FAIL}No slides found!{bcolors.ENDC}\n')
         return
@@ -143,7 +146,7 @@ def download_exercises(course_id, folder):
             if len(exr['subexercises']) > 0:
                 exr_string += f'# Exercise_{counter} \n'
                 for i, sub in enumerate(exr['subexercises'], 1):
-                    exr_string += '#' + str(i) + "\n"
+                    exr_string += f'#{str(i)}' + "\n"
                     exr_string += sub['last_attempt'] + '\n'
                 exr_string += '\n\n'
                 exr_string += '-' * 50 + '\n'
@@ -162,16 +165,16 @@ def download_videos(course_id, folder):
     chapters = get_course_chapters(course_id)
     display_text = True
     for chapter in chapters['user_chapters']:
-        page = con.session.get('https://www.datacamp.com/courses/{}/chapters/{}/continue'
-                               .format(course_id, chapter['chapter_id']))
-        video_ids = set(re.findall(
-            r';(course_{}_[\d|\w]+)&'.format(course_id), page.text))
+        page = con.session.get(
+            f"https://www.datacamp.com/courses/{course_id}/chapters/{chapter['chapter_id']}/continue"
+        )
+        video_ids = set(re.findall(f';(course_{course_id}_[\d|\w]+)&', page.text))
         video_type = 1
-        if len(video_ids) == 0:
+        if not video_ids:
             video_ids = set(re.findall(
                 r'(//videos.[/|\w|:|.|-]+[^/])&', page.text))
             video_type = 2
-        if len(video_ids) == 0:
+        if not video_ids:
             sys.stdout.write(
                 f'{bcolors.FAIL}No videos found!{bcolors.ENDC}\n')
             return
@@ -186,10 +189,12 @@ def download_videos(course_id, folder):
                 try:
                     if video_type == 1:
                         video_page = con.session.get(
-                            'https://projector.datacamp.com/?projector_key=' + video_id)
+                            f'https://projector.datacamp.com/?projector_key={video_id}'
+                        )
                     elif video_type == 2:
                         video_page = con.session.get(
-                            'https://projector.datacamp.com/?video_hls=' + video_id)
+                            f'https://projector.datacamp.com/?video_hls={video_id}'
+                        )
                 except:
                     helper.handle_error(con)
                     continue
@@ -205,18 +210,21 @@ def download_videos(course_id, folder):
                     f'{bcolors.FAIL}Videos cannot be downloaded!{bcolors.ENDC}\n')
                 return
             if link.endswith('mp4') and not link.startswith('http'):
-                link = 'https://' + link[2:]
+                link = f'https://{link[2:]}'
                 name = link.split('/')[-1]
             else:
                 if video_type == 1:
                     video_name_url = json.loads(soup.find(
                         "input", {"id": "slideDeckData"})['value'])
                     link_name = video_name_url['plain_video_mp4_link']
-                    if link_name is not None:
-                        name = link_name.split('/')[-1]
-                    else:
-                        name = video_url['audio_link'].split(
-                            '/')[-1].split('.')[0] + '.mp4'
+                    name = (
+                        link_name.split('/')[-1]
+                        if link_name is not None
+                        else video_url['audio_link']
+                        .split('/')[-1]
+                        .split('.')[0]
+                        + '.mp4'
+                    )
                 elif video_type == 2:
                     link_name = video_url['video_mp4_link']
                     name = link_name.split('/')[-1]
